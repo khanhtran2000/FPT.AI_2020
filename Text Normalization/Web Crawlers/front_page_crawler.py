@@ -1,7 +1,10 @@
+from bs4 import BeautifulSoup
+import urllib.request
+from selenium import webdriver
 from vnexpress_crawler import Extract_Text, Extract_URLs, concat_dataframe
 
 # Output path
-out_path = "/Users/macbook/Desktop/Everything Deep Learning/FPT.AI 2020/Text Normalization/raw_text_vnexpress.csv"
+out_path = "/Users/macbook/Desktop/Everything Deep Learning/FPT.AI 2020/Text Normalization/front_page.csv"
 
 # Parse the front page
 url =  'https://vnexpress.net'

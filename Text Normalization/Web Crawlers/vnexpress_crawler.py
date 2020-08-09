@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-from bs4 import BeautifulSoup
-import urllib.request
-import re
 from selenium import webdriver
+import re
 import pandas as pd
 import numpy as np
 
@@ -28,6 +26,7 @@ class Extract_URLs:
         self.col_left_urls = []
         self.col_right_urls = []
         self.below_urls = []
+        self.category_urls = []
 
     def get_top_story_url(self, soup):
         """Extract the website url of the top story"""
@@ -128,6 +127,17 @@ class Extract_URLs:
         below_urls = [href for href in below_hrefs if p.match(href)]
         self.below_urls = below_urls
         return below_urls
+
+    def get_category_page_urls(self, soup):
+        """Extract website urls of articles in specific category page (starting from page 2)"""
+        a_tags = soup.find("section", class_="section section_container mt15").find_all("a")
+        hrefs = [a_tag.get("href") for a_tag in a_tags]
+        category_urls = drop_duplicates(hrefs)
+
+        p = re.compile('.*\.html$')
+        category_urls = [url for url in category_urls if p.match(url)]
+        self.category_urls = category_urls
+        return category_urls
 
 
 class Extract_Text:
