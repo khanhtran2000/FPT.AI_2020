@@ -101,19 +101,22 @@ def all_num_combinations(word, split=False):
     keys = list(params)
     combinations = []
     for values in itertools.product(*map(params.get, keys)):
-        num = NumToVnStr(**dict(zip(keys, values))).to_vn_str(word)
-        combinations.append(num)
+        com = NumToVnStr(**dict(zip(keys, values))).to_vn_str(word)
+        combinations.append(com)
     
-    if split == True:
-        word_split = list(word)
-        word_split = [NumToVnStr().to_vn_str(w) for w in word_split]
-        combinations.append(" ".join(word_split))
+    word_split = list(word)
+    word_split = [NumToVnStr().to_vn_str(w) for w in word_split]
+
+    if split == True: combinations.append(" ".join(word_split))
+    else:
+        combinations = [com if len(com.split(" "))==1 else com if len(com.split(" "))>1 and com!=' '.join(word_split) else 'pass' for com in combinations]
+        combinations = [com for com in combinations if com != 'pass']
         
     unique_combinations = list(dict.fromkeys(combinations))
     return unique_combinations
 
 
-def num_preprocess(string):
+def num_preprocess(string, split=False, ngay_thang_nam="ngay_thang"):
     """Runs NumToVnStr and additional conversion for dates and floats"""
     re_1 = re.compile('.*[.,%].*')
     re_2 = re.compile('.*\/.*')
@@ -121,7 +124,7 @@ def num_preprocess(string):
     if re_1.match(string):
         string = re.sub('(?<=\d)[.](?=\d)','', string)
         string = re.sub('(?<=\d)[,](?=\d)', ' phẩy ', string)
-        string = re.sub('[%]', ' phần trăm ', string)
+        string = re.sub('[%]', ' phần trăm', string)
         # All possible combinations 
         all_combinations = [all_num_combinations(word) for word in string.split(" ") if word.isdecimal()]
         
@@ -140,15 +143,26 @@ def num_preprocess(string):
         return all_strings
     elif re_2.match(string):
         if string.count('/') == 1:
-            string = re.sub('[/]', ' tháng ', string)
-            all_combinations = [all_num_combinations(word) for word in string.split(" ") if word.isdecimal()]
-            all_strings = []
-            # Convert the num before "tháng" and after it
-            string_list = [[front, tail] for front in all_combinations[0] for tail in all_combinations[1]]
-            for s in string_list:
-                small_string_list = ["ngày "]
-                small_string_list.append(" tháng ".join(s))
-                all_strings.append("".join(small_string_list))
+            if ngay_thang_nam == "ngay_thang":
+                string = re.sub('[/]', ' tháng ', string)
+                all_combinations = [all_num_combinations(word) for word in string.split(" ") if word.isdecimal()]
+                all_strings = []
+                # Convert the num before "tháng" and after it
+                string_list = [[front, tail] for front in all_combinations[0] for tail in all_combinations[1]]
+                for s in string_list:
+                    small_string_list = []
+                    small_string_list.append(" tháng ".join(s))
+                    all_strings.append("".join(small_string_list))
+            elif ngay_thang_nam == "thang_nam":
+                string = re.sub('[/]', ' năm ', string)
+                all_combinations = [all_num_combinations(word) for word in string.split(" ") if word.isdecimal()]
+                all_strings = []
+                # Convert the num before "năm" and after it
+                string_list = [[front, tail] for front in all_combinations[0] for tail in all_combinations[1]]
+                for s in string_list:
+                    small_string_list = []
+                    small_string_list.append(" năm ".join(s))
+                    all_strings.append("".join(small_string_list))
             return  all_strings
         elif string.count('/') == 2:
             string_split = list(string)
@@ -159,12 +173,12 @@ def num_preprocess(string):
             all_strings = []
             string_list = [[front, mid, tail] for front in all_combinations[0] for mid in all_combinations[1] for tail in all_combinations[2]]
             for s in string_list:
-                small_string_list = ["ngày "]
+                small_string_list = []
                 small_string_list.append(" tháng ".join(s[0:2]))
                 small_string_list.append(" năm "+ s[-1])
                 all_strings.append("".join(small_string_list))
             return all_strings
-    else: return all_num_combinations(string, split=True)
+    else: return all_num_combinations(string, split=split)
 
 
 def both_letr_num(word):
@@ -189,43 +203,21 @@ def both_letr_num(word):
         except IndexError:
             new_word_list.append("".join(num_list))
     
-    # all_combinations = [all_num_combinations(w, split=True) for w in new_word_list if w.isdecimal()]
-
-    # def convert(s, x):
-    #     num_index = []
-    #     reading = []
-    #     for i in range(len(s)):
-    #         if s[i].isdecimal():
-    #             num_index.append(i)
-
-    #     all_call(x, num_index, reading, s.copy(), 0)
-    #     return reading
-
-    # def all_call(x, numbers, read, moment, index):
-    #     if index == len(numbers):
-    #         read.append(moment)
-    #         return 
-    #     for words in x[index]:
-    #         moment[numbers[index]] = words
-    #         all_call(x, numbers, read, moment.copy(), index+1)
-    
-    # all_strings = []
-    # for string in convert(new_word_list, all_combinations):
-    #     all_strings.append(string)
-
     return new_word_list
 
 def content_preprocess(content):
     """Preprocess the content of each article with Regex"""
     # Preprocess with regex
     content = re.sub('\xa0', ' ', content)
-    content = re.sub('(\n)',' ', content)
-    content = re.sub('[\(\)"\\\[\]\{}]', '', content)
+    content = re.sub('(\n)',' SEP ', content)
+    content = re.sub('["\\\[\]\{}]', '', content)
+    content = re.sub('SEP', '[SEP]', content)
     content = re.sub('(?<=\d)-(?=\d)', ' đến ', content)
     content = re.sub('(?<=\s)km(?=\W)', 'ki lô mét', content)
     content = re.sub('(?<=\s)km2(?=\W)', 'ki lô mét vuông', content)
     content = re.sub('(?<=\s)m(?=\W)', ' mét', content)
     content = re.sub('(?<=\s)m2(?=\W)', 'mét vuông', content)
+    content = re.sub('(?<=\s)cm(?=\W)', 'xăng ti mét', content)
     content = re.sub('(?<=\s)kg(?=\W)', 'ki lô gam', content)
     content = re.sub('(@gmail)', ' a còng gờ mêu ', content)
     content = re.sub('(?<=\D)[.]|[.](?=\D)', ' .', content)
@@ -234,19 +226,36 @@ def content_preprocess(content):
     content = re.sub(':', ' :', content)
     content = re.sub('\?', ' ?', content)
     content = re.sub('!', ' !', content)
+    content = re.sub('\(', ' , ', content)
+    content = re.sub('\)(?=.)', '', content)
+    content = re.sub('\)', ' ,', content)
     # Abbreviations
     content = re.sub('(USD)', 'u ét đê', content)
     content = re.sub('(TP HCM)', 'Thành phố Hồ Chí Minh', content)
+    content = re.sub('(TP.HCM)', 'Thành phố Hồ Chí Minh', content)
+    content = re.sub('TP(?! Bank)(?=.*?[A-Z])', 'Thành phố', content)
     content = re.sub('(THCS)', 'Trung học cơ sở', content)
     content = re.sub('(THPT)', 'Trung học phổ thông', content)
+    content = re.sub('(ĐH)', 'Đại học', content)
+    content = re.sub('(KHTN)', 'Khoa học Tự nhiên', content)
+    content = re.sub('(SBD)', 'Số báo danh', content)
+    content = re.sub('(ĐTQG)', 'Đội tuyển Quốc gia', content)
     content = re.sub('(CLB)', 'Câu lạc bộ', content)
     content = re.sub('(HTX)', 'Hợp tác xã', content)
     content = re.sub('(BTC)', 'Ban tổ chức', content)
     content = re.sub('(NXB)', 'Nhà xuất bản', content)
+    content = re.sub('(NSND)', 'Nghệ sĩ nhân dân', content)
+    content = re.sub('(NSƯT)', 'Nghệ sĩ ưu tú', content)
     content = re.sub('(TW)', "Trung ương", content)
+    content = re.sub('(ĐCS)', 'Đảng cộng sản', content)
     content = re.sub('(UBND)', 'Uỷ ban nhân dân', content)
+    content = re.sub('(CAND)', 'Công an nhân dân', content)
+    content = re.sub('(CSGT)', 'Cảnh sát giao thông', content)
+    content = re.sub('(CMND)', 'Chứng minh nhân dân', content)
     content = re.sub('(VNCH)', 'Việt Nam Cộng Hoà', content)
+    content = re.sub('(GDĐT)', 'Giáo dục Đào tạo', content)
     content = re.sub('(LHQ)', 'Liên Hợp Quốc', content)
+    content = re.sub('(LSQ)', 'Lãnh sự quán', content)
     content = re.sub('(cty)', 'công ty', content)
     content = re.sub('(TV)', 'ti vi', content)
     content = re.sub('(CD)', 'xi đi', content)
@@ -310,25 +319,24 @@ def BIO_tagging(content_split):
     df_bio = pd.DataFrame(content_split, columns=["Raw words"])
     df_bio["BIO text norm"] = bio_tn_col
     df_bio["BIO punc rest"] = bio_pr_col
-    # Drop punctuations
-    df_bio = df_bio[df_bio["Raw words"] != "."]
-    df_bio = df_bio[df_bio["Raw words"] != ";"]
-    df_bio = df_bio[df_bio["Raw words"] != ":"]
-    df_bio = df_bio[df_bio["Raw words"] != ","]
-    df_bio = df_bio[df_bio["Raw words"] != "?"]
-    df_bio = df_bio[df_bio["Raw words"] != "!"]
-    df_bio = df_bio[df_bio["Raw words"] != "-"]
-    df_bio.reset_index(inplace=True, drop=True)
 
     # New text normalization and punctuation restoration BIO tagging columns 
     bio_tn_col_2 = []
     bio_pr_col_2 = []
+
+    # Natural sayings of numbers in spoken language. Eg. No one says "120 quả táo" as "một hai không quả táo"
+    nat_nums = re.findall('(?:(?<=năm )|(?<=tháng )|(?<=ngày ))\d{1,2}(?![\/\d\w])|(?<= )\d+[\.\,]\d+(?= [\,a-zA-Z])|(?<= )\d+(?= [\,a-zA-Z])', " ".join(content_split))
+    nat_index_list = [content_split.index(n) for n in nat_nums]
+
     # Words after being processed go into this list
     new_content_split = []
     for i, word in enumerate(df_bio["Raw words"]):
         if d.match(word):
             try:
-                all_num_to_str = num_preprocess(word)
+                if i in nat_index_list: all_num_to_str = num_preprocess(word, split=False)
+                elif df_bio["Raw words"][i-1] == 'tháng': all_num_to_str = num_preprocess(word, ngay_thang_nam="thang_nam")
+                else: all_num_to_str = num_preprocess(word, split=True)
+
                 for num_to_str in all_num_to_str:
                     new_content_split.append(num_to_str)
 
@@ -356,7 +364,7 @@ def BIO_tagging(content_split):
             new_content_split[i:i+1] = word_split
     
     # Decapitalize words
-    new_content_split = [word.lower() for word in new_content_split]
+    new_content_split = [word if word=="[SEP]" else word.lower() for word in new_content_split]
 
     # df_bio_2 has processed words and their new BIO tagging
     df_bio_2 = pd.DataFrame(new_content_split, columns=["Processed words"])
@@ -366,6 +374,17 @@ def BIO_tagging(content_split):
     bio_tn_col_2 = re.sub("(?<=B-CAP )B-CAP", "I-CAP", bio_tn_col_2).split(" ")
     df_bio_2["BIO text norm"] = bio_tn_col_2
     df_bio_2["BIO punc rest"] = bio_pr_col_2
+
+    # Drop punctuations
+    df_bio_2 = df_bio_2[df_bio_2["Processed words"] != "."]
+    df_bio_2 = df_bio_2[df_bio_2["Processed words"] != ";"]
+    df_bio_2 = df_bio_2[df_bio_2["Processed words"] != ":"]
+    df_bio_2 = df_bio_2[df_bio_2["Processed words"] != ","]
+    df_bio_2 = df_bio_2[df_bio_2["Processed words"] != "?"]
+    df_bio_2 = df_bio_2[df_bio_2["Processed words"] != "!"]
+    df_bio_2 = df_bio_2[df_bio_2["Processed words"] != "-"]
+    df_bio_2.reset_index(inplace=True, drop=True)
+
     return df_bio_2
 
 if __name__ == "__main__":
