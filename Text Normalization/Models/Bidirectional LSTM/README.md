@@ -2,4 +2,4 @@
 - Pytorch 
 - CrossEntropyLoss
 - input size: 100k sentences
-- to see output: https://www.kaggle.com/christranvn/lstm-fpt?scriptVersionId=43849239
+- to see output: https://www.kaggle.com/christranvn/lstm-fpt-basic-approach
